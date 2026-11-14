@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<header class="page-header-banner">
+    <h1 class="page-title">Vocabulary Studio</h1>
+    <p class="page-subtitle">
+        Discover a fresh Word of the Day, build your revision deck, and search the meaning of any English word, phrase, or idiom.
+    </p>
+</header>
+
+<div class="module-content-container">
+
+    <section class="daily-word-spotlight" aria-label="Word of the Day">
+        <div class="spotlight-top-bar">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span class="spotlight-badge">⭐ Word of the Day</span>
+                <span class="spotlight-date-label" id="spotlightDate">{{ daily_word.date or 'Today' }}</span>
+            </div>
+            <button type="button" id="refreshDailyWordBtn" class="spotlight-refresh-btn" onclick="refreshDailyWord()" title="Generate a fresh Word of the Day">
+                <span>🔄</span>
+                <span>New Word</span>
+            </button>
+        </div>
+        
+        <div class="spotlight-main">
+            <div style="flex: 1; min-width: 260px;">
+                <div class="spotlight-word-row">
+                    <span class="spotlight-word" id="spotlightWord">{{ daily_word.word }}</span>
+                    <span class="spotlight-phonetic" id="spotlightPhonetic">{{ daily_word.phonetic }}</span>
+                    <span class="spotlight-pos" id="spotlightPos">{{ daily_word.part_of_speech }}</span>
+                    <span class="badge-tag diff-{{ daily_word.difficulty }}" id="spotlightDiff">{{ daily_word.difficulty }}</span>
+                </div>
+                <p class="spotlight-def" id="spotlightDef">
+                    {{ daily_word.definition }}
+                </p>
+                <div class="vocab-synonyms-row" id="spotlightSynonyms" {% if not daily_word.synonyms %}style="display:none;"{% endif %}>
+                    <span class="vocab-syn-label">Synonyms:</span>
+                    {% for syn in daily_word.synonyms or [] %}
+                    <span class="vocab-syn-pill">{{ syn }}</span>
+                    {% endfor %}
+                </div>
+                <div class="spotlight-example" id="spotlightExample">
+                    "{{ daily_word.example }}"
+                </div>
+                <div class="spotlight-tip">
+                    <span>💡 Pro Tip:</span>
+                    <span id="spotlightTip">{{ daily_word.tip }}</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; align-self: center;">
+                <button type="button" id="spotlightListenBtn" class="btn-primary" onclick="playWordAudio(DAILY_WORD.word)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                    <span>Listen Pronunciation</span>
+                </button>
+                <button type="button" id="spotlightSaveBtn" class="btn-secondary" onclick="toggleSaveWord(DAILY_WORD.id, this, DAILY_WORD.word)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="{% if daily_word.id in saved_ids %}#F59E0B{% else %}none{% endif %}" stroke="{% if daily_word.id in saved_ids %}#F59E0B{% else %}currentColor{% endif %}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                    <span>{% if daily_word.id in saved_ids %}Saved in My List ★{% else %}Save to My List{% endif %}</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div class="vocab-toolbar">
+        <div class="vocab-search-group">
+            <div class="vocab-search-wrap">
+                <svg class="vocab-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" 
+                       id="vocabSearchInput" 
+                       class="vocab-search-input" 
+                       placeholder="Search ANY English word, phrase, or idiom..." 
+                       oninput="handleVocabSearch()"
+                       onkeydown="if (event.key === 'Enter') { event.preventDefault(); lookupWordFromInput(); }">
+            </div>
+            <button type="button" id="vocabLookupBtn" class="btn-lookup-word" onclick="lookupWordFromInput()">Look Up</button>
+        </div>
+
+        <div class="vocab-filter-tabs">
+            <button type="button" class="filter-tab active" data-category="all" onclick="filterCategory('all', this)">All Words</button>
+            <button type="button" class="filter-tab" data-category="Academic" onclick="filterCategory('Academic', this)">Academic</button>
+            <button type="button" class="filter-tab" data-category="Professional" onclick="filterCategory('Professional', this)">Professional</button>
+            <button type="button" class="filter-tab" data-category="Everyday Idioms" onclick="filterCategory('Everyday Idioms', this)">Idioms</button>
+            <button type="button" class="filter-tab" data-category="Connectors" onclick="filterCategory('Connectors', this)">Connectors</button>
+            <button type="button" class="filter-tab" data-category="saved" onclick="filterCategory('saved', this)">Saved Words (★)</button>
+        </div>
+    </div>
+
+    <!-- Live Unlimited Dictionary Result Area -->
+    <section id="dictionaryLookupSection" class="dictionary-lookup-section" style="display: none;" aria-live="polite"></section>
+
+    <div class="vocab-cards-grid" id="vocabGrid">
+        {% for word in words %}
+        <div class="vocab-card" data-id="{{ word.id }}" data-category="{{ word.category }}" data-word="{{ word.word }}" data-def="{{ word.definition }}">
+            <div>
+                <div class="vocab-card-header">
+                    <div>
+                        <div class="vocab-card-word">{{ word.word }}</div>
+                        <div class="vocab-card-phonetic">{{ word.phonetic }}</div>
+                    </div>
+                    <div class="vocab-card-badges">
+                        <span class="badge-tag pos">{{ word.part_of_speech }}</span>
+                        <span class="badge-tag diff-{{ word.difficulty }}">{{ word.difficulty }}</span>
+                    </div>
+                </div>
+
+                <p class="vocab-card-def">{{ word.definition }}</p>
+
+                <div class="vocab-card-example">
+                    "{{ word.example }}"
+                </div>
+
+                <div class="vocab-card-tip">
+                    <span>💡</span>
+                    <span>{{ word.tip }}</span>
+                </div>
+            </div>
+
+            <div class="vocab-card-footer">
+                <button type="button" class="btn-card-audio" onclick="playWordFromCard(this)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                    <span>Pronounce</span>
+                </button>
+
+                <button type="button" class="btn-bookmark {% if word.id in saved_ids %}active{% endif %}" data-id="{{ word.id }}" onclick="toggleCardBookmark(this)" title="Bookmark word">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if word.id in saved_ids %}#F59E0B{% else %}none{% endif %}" stroke="{% if word.id in saved_ids %}#F59E0B{% else %}currentColor{% endif %}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="vocabEmptyState" class="vocab-empty-results" style="display: none;">
+        <h3>No matching curated cards</h3>
+        <p id="vocabEmptyHint">Press <strong>Enter</strong> or click <strong>Look Up</strong> to search the full English dictionary for this word.</p>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const INITIAL_SAVED_IDS = {{ saved_ids|tojson }};
+    let DAILY_WORD = {{ daily_word|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/vocabulary.js') }}"></script>
+{% endblock %}

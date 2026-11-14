@@ -1,0 +1,23 @@
+# Environment variables and secrets (NEVER uploaded to GitHub)
+.env
+.env.*
+*.env
+
+# Python cache & compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# SQLite lock files & logs
+*.db-journal
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+*.db

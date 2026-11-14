@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="module-content-container" style="max-width: 480px; margin: 60px auto;">
+    <div class="panel-card" style="padding: 36px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div class="logo-icon-box mx-auto" style="margin-bottom: 14px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M12 9v2"></path>
+                    <path d="M16 8v4"></path>
+                </svg>
+            </div>
+            <h1 style="font-size: 1.6rem; margin-bottom: 6px;">
+                {% if mode == 'register' %}Create Student Account{% else %}Student Sign In{% endif %}
+            </h1>
+            <p style="font-size: 0.88rem; color: var(--text-muted);">
+                {% if mode == 'register' %}
+                Register to track your speaking practice sessions and saved vocabulary.
+                {% else %}
+                Access your dashboard, conversation logs, and interview scores.
+                {% endif %}
+            </p>
+        </div>
+
+        {% if error %}
+        <div style="background-color: #FEE2E2; border: 1px solid #FCA5A5; color: #B91C1C; padding: 10px 14px; border-radius: var(--radius-md); font-size: 0.85rem; margin-bottom: 18px;">
+            ⚠️ {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% if mode == 'register' %}{{ url_for('register') }}{% else %}{{ url_for('login') }}{% endif %}" class="modal-form">
+            {% if mode == 'register' %}
+            <div class="form-group">
+                <label for="regName">Full Name</label>
+                <input type="text" id="regName" name="name" required placeholder="e.g. Your Full Name" value="{{ request.form.get('name', '') }}">
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="userEmail">Student Email</label>
+                <input type="email" id="userEmail" name="email" required placeholder="student@college.edu" value="{{ request.form.get('email', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="userPassword">Password</label>
+                <input type="password" id="userPassword" name="password" required placeholder="••••••••" value="">
+            </div>
+
+            <button type="submit" class="btn-primary w-full" style="margin-top: 6px;">
+                {% if mode == 'register' %}Create Account & Enter Dashboard{% else %}Sign In to Dashboard{% endif %}
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 16px;">
+            {% if mode == 'register' %}
+            Already have an account? <a href="{{ url_for('login') }}" style="font-weight: 700;">Sign In here</a>
+            {% else %}
+            Don't have an account yet? <a href="{{ url_for('register') }}" style="font-weight: 700;">Create an Account</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

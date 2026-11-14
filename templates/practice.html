@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/practice.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="practice-page">
+    <div class="practice-container">
+        
+        <div class="chat-window-card">
+            <div class="chat-window-header">
+                <div class="chat-partner-info">
+                    <div class="coach-avatar-lg">
+                        <span>S</span>
+                        <span class="status-indicator" title="Online and ready to listen"></span>
+                    </div>
+                    <div>
+                        <div class="chat-partner-name">Sophia</div>
+                        <div class="chat-partner-subtitle">AI Speaking Coach • Patient & Encouraging</div>
+                    </div>
+                </div>
+
+                <div class="chat-header-controls">
+                    <select id="practiceTopicSelect" class="select-custom" aria-label="Select conversation topic" onchange="handleTopicChange()">
+                        <option value="ordering-cafe" selected>☕ Ordering at a Cafe</option>
+                        <option value="college-life">🎓 Campus & College Life</option>
+                        <option value="job-interview">💼 Job Interview Intro</option>
+                        <option value="casual-chitchat">💬 Casual Chit-chat</option>
+                    </select>
+
+                    <select id="practiceLevelSelect" class="select-custom" aria-label="Select proficiency level">
+                        <option value="beginner">Beginner (A1-A2)</option>
+                        <option value="intermediate" selected>Intermediate (B1-B2)</option>
+                        <option value="advanced">Advanced (C1-C2)</option>
+                    </select>
+
+                    <button type="button" class="btn-restart" onclick="restartConversation()" title="Clear and start new conversation">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        <span>New Chat</span>
+                    </button>
+                </div>
+            </div>
+
+            {% set student_display_name = (current_user.name.split()[0] if current_user and current_user.name else 'there') %}
+            <div class="chat-messages-container" id="chatMessages">
+                <div class="chat-row ai-row">
+                    <div class="row-avatar">S</div>
+                    <div class="message-bubble-box">
+                        <div class="chat-bubble-content">
+                            Hello {{ student_display_name }}! Welcome to the speaking room. We are practicing <strong>Ordering at a Cafe</strong> today. Imagine you just walked into your favorite cafe. What would you like to order?
+                        </div>
+                        <button type="button" class="btn-speech-play" onclick="playTextAudio(this)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                            <span>Listen to Sophia</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="suggested-starters-bar" id="startersBar">
+                <span class="starters-label">Try saying:</span>
+                <button type="button" class="starter-pill" onclick="insertStarter('Could I please get a medium cappuccino?')">
+                    "Could I please get a medium cappuccino?"
+                </button>
+                <button type="button" class="starter-pill" onclick="insertStarter('Do you have any oat milk options?')">
+                    "Do you have any oat milk options?"
+                </button>
+                <button type="button" class="starter-pill" onclick="insertStarter('I would like to order a fresh croissant.')">
+                    "I would like to order a fresh croissant."
+                </button>
+            </div>
+
+            <div class="mic-status-banner" id="micStatusBanner">
+                🎙️ Listening... speak now into your microphone.
+            </div>
+
+            <form class="chat-input-bar" id="chatForm" onsubmit="handleSendMessage(event)">
+                <input type="text" 
+                       id="chatInput" 
+                       class="chat-input-field" 
+                       placeholder="Type your message, or click the mic to speak..." 
+                       autocomplete="off" 
+                       required>
+
+                <button type="button" 
+                        class="btn-mic-toggle" 
+                        id="micBtn" 
+                        onclick="toggleSpeechRecognition()" 
+                        title="Click to speak using your microphone" 
+                        aria-label="Toggle voice input">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+
+                <button type="submit" class="btn-send-message" id="sendBtn" title="Send message" aria-label="Send message">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <aside class="practice-side-panel">
+            <div class="side-panel-card">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <span>Grammar Coach</span>
+                </h3>
+                <div id="grammarFeedbackPanel">
+                    <div class="feedback-empty-state">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                        <p>Speak naturally! If you make a common mistake, friendly tips and explanations will appear here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-panel-card">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                    <span>Suggested Expressions</span>
+                </h3>
+                <div class="context-vocab-list" id="contextVocabList">
+                    <div class="context-vocab-item">
+                        <strong>Decaf</strong>
+                        <span>Without caffeine</span>
+                    </div>
+                    <div class="context-vocab-item">
+                        <strong>Oat milk</strong>
+                        <span>Dairy alternative</span>
+                    </div>
+                    <div class="context-vocab-item">
+                        <strong>To go / Takeaway</strong>
+                        <span>Consume outside cafe</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-panel-card text-center">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Session Engagement</div>
+                <div id="sessionMessageCount" style="font-size: 2.2rem; font-weight: 800; color: var(--brand-primary); margin: 6px 0;">
+                    0
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Exchanges completed in this topic</p>
+            </div>
+        </aside>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const CURRENT_STUDENT_NAME = {{ (current_user.name if current_user else '')|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/practice.js') }}"></script>
+{% endblock %}
