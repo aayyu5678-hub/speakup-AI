@@ -2,6 +2,11 @@
 .env
 .env.*
 *.env
+!.env.example
+
+# Editor configurations
+.vscode/
+.idea/
 
 # Python cache & compiled bytecode
 __pycache__/

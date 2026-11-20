@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="module-page-container">
+    <header class="page-header-banner">
+        <div class="header-banner-badge">
+            <span>🏆 GAMIFIED MILESTONES</span>
+        </div>
+        <h1 class="page-title">Achievements & Milestone Badges</h1>
+        <p class="page-subtitle">
+            Celebrate your spoken English consistency, vocabulary collection milestones, and mock interview accomplishments.
+        </p>
+    </header>
+
+    <div class="module-content-container">
+        <!-- GAMIFIED STATS ROW -->
+        <div class="gamified-stats-banner">
+            <div class="trophy-lead-box">
+                <span class="trophy-lead-icon">🏆</span>
+                <div>
+                    <h2 class="trophy-lead-title">Level 3 Fluency Communicator</h2>
+                    <p class="trophy-lead-sub">You have earned 1,120 XP across speaking turns and vocabulary studies.</p>
+                </div>
+            </div>
+            <div class="gamified-stats-pills">
+                <div class="xp-pill">
+                    <span class="xp-value">1,120</span>
+                    <span class="xp-label">Total XP</span>
+                </div>
+                <div class="badges-unlocked-pill">
+                    <span class="badges-count">{{ achievements|selectattr('unlocked')|list|length }} / {{ achievements|length }}</span>
+                    <span class="badges-label">Badges Unlocked</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BADGES GRID -->
+        <div class="achievements-grid">
+            {% for badge in achievements %}
+            <div class="achievement-card {% if badge.unlocked %}unlocked{% else %}locked{% endif %}">
+                <div class="achievement-card-top">
+                    <div class="achievement-icon-wrapper">
+                        <span class="badge-icon-large">{{ badge.icon }}</span>
+                        {% if badge.unlocked %}
+                        <span class="badge-check-dot" title="Unlocked">✓</span>
+                        {% else %}
+                        <span class="badge-lock-dot" title="Locked">🔒</span>
+                        {% endif %}
+                    </div>
+                    <span class="badge-category-tag">{{ badge.category }}</span>
+                </div>
+
+                <div class="achievement-info">
+                    <h3 class="badge-title">{{ badge.title }}</h3>
+                    <p class="badge-desc">{{ badge.description }}</p>
+                </div>
+
+                <div class="achievement-footer">
+                    <div class="badge-progress-meta">
+                        <span class="badge-progress-label">Milestone Progress</span>
+                        <span class="badge-progress-value">{{ badge.progress }}</span>
+                    </div>
+                    <div class="badge-xp-reward">+{{ badge.xp }} XP</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

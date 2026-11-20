@@ -11,11 +11,14 @@ from database import (
     save_chat_turn, save_interview_result, toggle_save_word,
     get_user_saved_words, get_student_dashboard_data,
     get_cached_dictionary_word, save_dictionary_word, get_saved_custom_words,
-    get_daily_word_cache, set_daily_word_cache
+    get_daily_word_cache, set_daily_word_cache,
+    update_user_profile, change_user_password, get_user_achievements
 )
+from listening_data import LISTENING_DIALOGUES
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'speakup-ai-student-mini-project-secret-2026')
+app.jinja_env.globals.update(min=min, max=max, int=int, len=len)
 
 ENV_FILE_PATH = os.path.join(os.path.dirname(__file__), '.env')
 
@@ -45,7 +48,8 @@ def inject_user():
             'current_user': {
                 'id': user_id,
                 'name': session.get('user_name', 'Student'),
-                'email': session.get('user_email', '')
+                'email': session.get('user_email', ''),
+                'avatar': session.get('user_avatar', '')
             }
         }
     return {'current_user': None}
@@ -490,9 +494,54 @@ COMMON_GRAMMAR_RULES = [
         "explanation": "With third-person singular subjects (he, she, it), use 'doesn't' instead of 'don't'."
     },
     {
+        "pattern": r"\b(she|he|it)\s+have\b",
+        "correction": "\\1 has",
+        "explanation": "With third-person singular subjects (he, she, it), use 'has' instead of 'have'."
+    },
+    {
+        "pattern": r"\b(they|we|you)\s+is\b",
+        "correction": "\\1 are",
+        "explanation": "With plural subjects (they, we, you), use 'are' instead of 'is'."
+    },
+    {
+        "pattern": r"\b(they|we|you)\s+was\b",
+        "correction": "\\1 were",
+        "explanation": "With plural subjects in past tense, use 'were' instead of 'was'."
+    },
+    {
+        "pattern": r"\bi\s+is\b",
+        "correction": "I am",
+        "explanation": "The first-person singular pronoun 'I' always pairs with 'am' in the present tense."
+    },
+    {
+        "pattern": r"\b(did\s+not|didn't)\s+(went|saw|told|ate|came|knew|took|gave|wrote)\b",
+        "correction": "did not \\2",
+        "explanation": "The auxiliary verb 'did' already carries past tense. Pair with base verb form (e.g. 'didn't go', 'didn't see')."
+    },
+    {
+        "pattern": r"\bdid\s+went\b",
+        "correction": "did go",
+        "explanation": "The auxiliary 'did' requires base form 'go'."
+    },
+    {
+        "pattern": r"\bdid\s+saw\b",
+        "correction": "did see",
+        "explanation": "The auxiliary 'did' requires base form 'see'."
+    },
+    {
+        "pattern": r"\bdon't\s+have\s+no\b",
+        "correction": "doesn't have any",
+        "explanation": "Avoid double negatives in English. Use 'doesn't have any' or 'has no'."
+    },
+    {
+        "pattern": r"\bgo\s+to\s+([a-zA-Z\s]+)\s+yesterday\b",
+        "correction": "went to \\1 yesterday",
+        "explanation": "The past time indicator 'yesterday' requires simple past tense 'went to'."
+    },
+    {
         "pattern": r"\bdiscuss\s+about\b",
         "correction": "discuss",
-        "explanation": "The verb 'discuss' already means 'talk about', so 'about' is not needed. Say 'let's discuss the project'."
+        "explanation": "The verb 'discuss' already means 'talk about', so 'about' is redundant. Say 'let's discuss the project'."
     },
     {
         "pattern": r"\baccording\s+to\s+me\b",
@@ -500,7 +549,7 @@ COMMON_GRAMMAR_RULES = [
         "explanation": "'According to' is used for third parties or references. When expressing your own view, use 'In my opinion' or 'From my perspective'."
     },
     {
-        "pattern": r"\blisten\s+(music|to\s+me|the\s+teacher)\b",
+        "pattern": r"\blisten\s+(music|me|the\s+teacher)\b",
         "correction": "listen to \\1",
         "explanation": "Always use the preposition 'to' with 'listen': 'listen to music'."
     },
@@ -511,25 +560,223 @@ COMMON_GRAMMAR_RULES = [
     },
     {
         "pattern": r"\bcan\s+able\s+to\b",
-        "correction": "can OR will be able to",
-        "explanation": "'Can' and 'able to' express the same meaning. Using them together is repetitive."
+        "correction": "can",
+        "explanation": "'Can' and 'able to' express the same meaning. Using them together is repetitive. Use 'can' or 'am able to'."
+    },
+    {
+        "pattern": r"\bi\s+am\s+having\b",
+        "correction": "I have",
+        "explanation": "Verbs of possession (have, own) describe states, not continuous actions. Say 'I have' rather than 'I am having'."
+    },
+    {
+        "pattern": r"\bi\s+am\s+knowing\b",
+        "correction": "I know",
+        "explanation": "'Know' is a stative verb. Use simple present 'I know'."
+    },
+    {
+        "pattern": r"\brevert\s+back\b",
+        "correction": "reply",
+        "explanation": "'Revert' already means to return. Using 'back' is redundant. Say 'reply' or 'get back to me'."
+    },
+    {
+        "pattern": r"\b(did\s+not|didn't)\s+told\b",
+        "correction": "\\1 tell",
+        "explanation": "The auxiliary 'did' already carries past tense. Pair with base form 'tell'."
+    },
+    {
+        "pattern": r"\bone\s+of\s+my\s+friend\b",
+        "correction": "one of my friends",
+        "explanation": "'One of' is followed by a plural noun: 'one of my friends'."
+    },
+    {
+        "pattern": r"\bgive\s+an?\s+exam\b",
+        "correction": "take an exam",
+        "explanation": "Students 'take' or 'sit for' an exam; teachers 'give' the exam."
+    },
+    {
+        "pattern": r"\bpass\s+out\s+from\s+college\b",
+        "correction": "graduated from college",
+        "explanation": "In standard English, 'pass out' means to faint. Use 'graduate from college'."
+    },
+    {
+        "pattern": r"\bout\s+of\s+station\b",
+        "correction": "out of town",
+        "explanation": "In modern global English, use 'out of town' or 'away'."
+    },
+    {
+        "pattern": r"\bmarried\s+with\b",
+        "correction": "married to",
+        "explanation": "The preposition following 'married' is 'to', not 'with'."
+    },
+    {
+        "pattern": r"\bcongratulate\s+for\b",
+        "correction": "congratulate on",
+        "explanation": "We say 'congratulate on' your success or achievement."
+    },
+    {
+        "pattern": r"\binformations\b",
+        "correction": "information",
+        "explanation": "'Information' is an uncountable noun with no plural 's'."
+    },
+    {
+        "pattern": r"\badvices\b",
+        "correction": "advice",
+        "explanation": "'Advice' is an uncountable noun. Use 'pieces of advice' or simply 'advice'."
+    },
+    {
+        "pattern": r"\bfurnitures\b",
+        "correction": "furniture",
+        "explanation": "'Furniture' is an uncountable noun with no plural 's'."
+    },
+    {
+        "pattern": r"\bwhere\s+you\s+are\s+going\?",
+        "correction": "Where are you going?",
+        "explanation": "In English questions, invert auxiliary verb and subject: 'Where are you going?'."
+    },
+    {
+        "pattern": r"\bwhat\s+you\s+are\s+doing\?",
+        "correction": "What are you doing?",
+        "explanation": "In English questions, invert auxiliary verb and subject: 'What are you doing?'."
     }
 ]
 
 def analyze_student_grammar(text):
     if not text:
-        return None
+        return []
     corrections = []
     text_lower = text.lower()
     for rule in COMMON_GRAMMAR_RULES:
         match = re.search(rule["pattern"], text_lower)
         if match:
+            found_str = match.group(0)
+            sug_str = re.sub(rule["pattern"], rule["correction"], found_str, flags=re.IGNORECASE)
             corrections.append({
-                "found": match.group(0),
-                "suggestion": rule["correction"],
-                "explanation": rule["explanation"]
+                "found": found_str,
+                "incorrect": found_str,
+                "suggestion": sug_str,
+                "explanation": rule["explanation"],
+                "rule": rule["explanation"]
             })
     return corrections
+
+def evaluate_sentence_ai_and_rules(text):
+    """
+    Intelligent sentence evaluator:
+    1. Leverages Groq AI for deep grammar, spelling, tense, and spoken phrasing analysis.
+    2. Falls back seamlessly to comprehensive local rule engine if offline.
+    """
+    text = (text or "").strip()
+    if not text:
+        return {
+            "has_issues": False,
+            "original": "",
+            "refined": "",
+            "score": 100,
+            "issues": []
+        }
+
+    api_key = os.environ.get("GROQ_API_KEY")
+    # 1. Attempt Groq AI evaluation
+    if api_key and api_key.strip() and "your_groq_api_key_here" not in api_key:
+        prompt = (
+            "You are an expert English grammar coach and placement interview speech evaluator.\n"
+            f'Sentence: "{text}"\n\n'
+            "Analyze the sentence for any grammatical errors, tense mismatches, subject-verb agreement problems, "
+            "awkward prepositions, spelling mistakes, double negatives, or redundant phrasing.\n"
+            "Use single quotes 'example' inside text values for quoted terms. Never use raw unescaped double quotes inside values.\n"
+            "Respond in valid strict JSON ONLY (no markdown code blocks, no backticks, no other text):\n"
+            "{\n"
+            '  "has_issues": true,\n'
+            '  "refined": "the exact corrected, natural right sentence with proper capitalization and punctuation",\n'
+            '  "score": 75,\n'
+            '  "issues": [\n'
+            '    {\n'
+            '      "incorrect": "the wrong phrase",\n'
+            '      "suggestion": "the correct replacement",\n'
+            '      "explanation": "clear grammar rule explanation"\n'
+            '    }\n'
+            '  ]\n'
+            "}"
+        )
+        try:
+            raw_text, model_name, err = _run_groq_with_fallback(
+                api_key=api_key,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=450,
+                temperature=0.1,
+                timeout=8
+            )
+            if raw_text:
+                cleaned = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL | re.IGNORECASE).strip()
+                cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.MULTILINE)
+                cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+                
+                parsed = None
+                json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group(0))
+                    except Exception:
+                        ref_m = re.search(r'"refined"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', cleaned)
+                        if ref_m:
+                            parsed = {
+                                "has_issues": True,
+                                "refined": ref_m.group(1),
+                                "score": 75,
+                                "issues": []
+                            }
+
+                if parsed:
+                    refined = parsed.get("refined", "").strip()
+                    has_issues = bool(parsed.get("has_issues", False))
+                    score = int(parsed.get("score", 95 if not has_issues else 75))
+                    issues_raw = parsed.get("issues", [])
+                    clean_issues = []
+                    if isinstance(issues_raw, list):
+                        for iss in issues_raw:
+                            if isinstance(iss, dict) and iss.get("incorrect") and iss.get("suggestion"):
+                                clean_issues.append({
+                                    "incorrect": _normalize_punctuation(str(iss.get("incorrect")).strip()),
+                                    "suggestion": _normalize_punctuation(str(iss.get("suggestion")).strip()),
+                                    "explanation": _normalize_punctuation(str(iss.get("explanation", "")).strip())
+                                })
+                    if refined:
+                        return {
+                            "success": True,
+                            "has_issues": has_issues or bool(clean_issues),
+                            "original": text,
+                            "refined": _normalize_punctuation(refined),
+                            "score": score,
+                            "issues": clean_issues
+                        }
+        except Exception as e:
+            print(f"Groq Sentence AI evaluation fallback: {e}")
+
+    # 2. Comprehensive rule-based fallback
+    issues = analyze_student_grammar(text)
+    refined = text
+    for issue in issues:
+        inc = issue.get("incorrect", "")
+        sug = issue.get("suggestion", "")
+        if inc and sug:
+            pattern = re.compile(re.escape(inc), re.IGNORECASE)
+            refined = pattern.sub(sug, refined)
+
+    refined = refined.strip()
+    if refined:
+        refined = refined[0].upper() + refined[1:]
+        if not refined.endswith(('.', '?', '!')):
+            refined += '.'
+
+    score = 98 if not issues else max(50, min(92, 100 - len(issues) * 15))
+    return {
+        "success": True,
+        "has_issues": bool(issues),
+        "original": text,
+        "refined": refined,
+        "score": score,
+        "issues": issues
+    }
 
 def _normalize_punctuation(text):
     """Replace curly quotes and non-breaking hyphens with clean ASCII equivalents for speech/UI/Windows consoles."""
@@ -1202,7 +1449,9 @@ def generate_ai_tutor_response(topic, message, history=None, level="intermediate
 
 @app.route('/')
 def home():
-    return render_template('index.html', title="SpeakUp AI — English Speaking Assistant")
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1220,6 +1469,7 @@ def login():
         session['user_id'] = result['id']
         session['user_name'] = result['name']
         session['user_email'] = result['email']
+        session['user_avatar'] = result.get('avatar', '')
         if request.is_json:
             return jsonify({"success": True, "user": result, "redirect": url_for('dashboard')})
         return redirect(url_for('dashboard'))
@@ -1245,6 +1495,7 @@ def register():
         session['user_id'] = result['id']
         session['user_name'] = result['name']
         session['user_email'] = result['email']
+        session['user_avatar'] = result.get('avatar', '')
         if request.is_json:
             return jsonify({"success": True, "user": result, "redirect": url_for('dashboard')})
         return redirect(url_for('dashboard'))
@@ -1256,16 +1507,13 @@ def register():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 def dashboard():
     user_id = session.get('user_id')
     if not user_id:
-        user_id = 1
-        session['user_id'] = 1
-        session['user_name'] = 'Alex Turner'
-        session['user_email'] = 'alex.turner@college.edu'
+        return redirect(url_for('login'))
 
     stats = get_student_dashboard_data(user_id)
     student_name = session.get('user_name', 'Student')
@@ -1273,14 +1521,117 @@ def dashboard():
     return render_template('dashboard.html', 
                            title="Student Dashboard — SpeakUp AI",
                            stats=stats,
-                           student_name=student_name)
+                           student_name=student_name,
+                           active_page='dashboard')
+
+@app.route('/modules')
+def modules():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    stats = get_student_dashboard_data(user_id)
+    student_name = session.get('user_name', 'Student')
+    return render_template('modules.html',
+                           title="Learning Modules — SpeakUp AI",
+                           stats=stats,
+                           student_name=student_name,
+                           active_page='modules')
+
+@app.route('/grammar')
+def grammar():
+    return redirect(url_for('modules'))
 
 @app.route('/practice')
 def practice():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
     student_name = session.get('user_name', '')
+    mode = request.args.get('mode', 'speaking')
+    active_page = 'conversation' if mode == 'conversation' else 'practice'
     return render_template('practice.html', 
                            title="Speaking Practice Room — SpeakUp AI",
-                           student_name=student_name)
+                           student_name=student_name,
+                           mode=mode,
+                           active_page=active_page)
+
+@app.route('/conversation')
+def conversation():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    student_name = session.get('user_name', '')
+    return render_template('practice.html',
+                           title="AI Conversation Studio — SpeakUp AI",
+                           student_name=student_name,
+                           mode='conversation',
+                           active_page='conversation')
+
+@app.route('/listening')
+def listening():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    student_name = session.get('user_name', 'Student')
+    stats = get_student_dashboard_data(user_id)
+    category = request.args.get('category', 'all').lower()
+
+    if category and category != 'all':
+        filtered = [d for d in LISTENING_DIALOGUES if d['category_slug'] == category]
+    else:
+        filtered = LISTENING_DIALOGUES
+
+    return render_template('listening.html',
+                           title="Listening Practice Studio — SpeakUp AI",
+                           student_name=student_name,
+                           stats=stats,
+                           dialogues=filtered,
+                           all_dialogues=LISTENING_DIALOGUES,
+                           selected_category=category,
+                           active_page='listening')
+
+@app.route('/progress')
+def progress_page():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    stats = get_student_dashboard_data(user_id)
+    student_name = session.get('user_name', 'Student')
+    achievements = get_user_achievements(user_id)
+    return render_template('progress.html',
+                           title="My Progress & Analytics — SpeakUp AI",
+                           stats=stats,
+                           student_name=student_name,
+                           achievements=achievements,
+                           active_page='progress')
+
+@app.route('/achievements')
+def achievements():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    student_name = session.get('user_name', 'Student')
+    achievements_list = get_user_achievements(user_id)
+    stats = get_student_dashboard_data(user_id)
+    return render_template('achievements.html',
+                           title="My Achievements & Badges — SpeakUp AI",
+                           achievements=achievements_list,
+                           stats=stats,
+                           student_name=student_name,
+                           active_page='achievements')
+
+@app.route('/profile')
+def profile_page():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    user = get_user_by_id(user_id)
+    stats = get_student_dashboard_data(user_id)
+    student_name = session.get('user_name', 'Student')
+    return render_template('profile.html',
+                           title="My Profile & Account — SpeakUp AI",
+                           user=user,
+                           stats=stats,
+                           student_name=student_name,
+                           active_page='profile')
 
 @app.route('/vocabulary')
 def vocabulary():
@@ -1294,13 +1645,72 @@ def vocabulary():
                            title="Vocabulary Studio — SpeakUp AI",
                            words=all_words,
                            daily_word=daily_word,
-                           saved_ids=saved_ids)
+                           saved_ids=saved_ids,
+                           active_page='vocabulary')
 
 @app.route('/interview')
 def interview():
     return render_template('interview.html', 
                            title="Interview Simulator — SpeakUp AI",
-                           questions=INTERVIEW_QUESTIONS)
+                           questions=INTERVIEW_QUESTIONS,
+                           active_page='interview')
+
+@app.route('/api/user/profile', methods=['GET', 'POST'])
+def api_user_profile():
+    user_id = session.get('user_id', 1)
+    if request.method == 'GET':
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        return jsonify({"success": True, "user": user})
+
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    avatar = data.get('avatar')
+
+    success, res = update_user_profile(user_id, name, email, avatar=avatar)
+    if success:
+        session['user_name'] = res['name']
+        session['user_email'] = res['email']
+        if 'avatar' in res and res['avatar']:
+            session['user_avatar'] = res['avatar']
+        return jsonify({
+            "success": True,
+            "user": res,
+            "message": "Profile updated successfully!"
+        })
+    return jsonify({"success": False, "error": res}), 400
+
+@app.route('/api/user/password', methods=['POST'])
+def api_user_password():
+    user_id = session.get('user_id', 1)
+    data = request.get_json() or {}
+    current_pwd = data.get('current_password', '')
+    new_pwd = data.get('new_password', '')
+    confirm_pwd = data.get('confirm_password', '')
+
+    if not current_pwd:
+        return jsonify({"success": False, "error": "Current password is required."}), 400
+    if not new_pwd or len(new_pwd) < 4:
+        return jsonify({"success": False, "error": "New password must be at least 4 characters long."}), 400
+    if confirm_pwd and new_pwd != confirm_pwd:
+        return jsonify({"success": False, "error": "New password and confirmation do not match."}), 400
+
+    success, msg = change_user_password(user_id, current_pwd, new_pwd)
+    if success:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"success": False, "error": msg}), 400
+
+@app.route('/api/grammar/analyze', methods=['POST'])
+def api_grammar_analyze():
+    data = request.get_json() or {}
+    text = data.get('text', '').strip()
+    if not text:
+        return jsonify({"success": False, "error": "Please enter a sentence to evaluate."}), 400
+
+    result = evaluate_sentence_ai_and_rules(text)
+    return jsonify(result)
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="module-page-container">
+    <header class="page-header-banner">
+        <div class="header-banner-badge">
+            <span>📈 PERFORMANCE ANALYTICS</span>
+        </div>
+        <h1 class="page-title">My Learning Progress & Fluency Metrics</h1>
+        <p class="page-subtitle">
+            Track your speaking milestones, vocabulary growth, interview performance, and continuous consistency.
+        </p>
+    </header>
+
+    <div class="module-content-container">
+        <!-- TOP SUMMARY KPI ROW -->
+        <div class="dashboard-stats-grid">
+            <div class="stat-card streak-highlight-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Active Streak</span>
+                    <span class="stat-badge flame">🔥 {{ stats.streak_days }} Days</span>
+                </div>
+                <div class="stat-card-value">{{ stats.streak_days }} <span class="stat-unit">Days</span></div>
+                <p class="stat-card-footer">Top 5% of active students this week</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Fluency Rating</span>
+                    <span class="stat-badge purple">Advanced</span>
+                </div>
+                <div class="stat-card-value">{{ stats.fluency_score }}<span class="stat-unit">%</span></div>
+                <p class="stat-card-footer">Dynamic score based on spoken chat turns</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Practice Time</span>
+                    <span class="stat-badge green">{{ stats.total_messages }} turns</span>
+                </div>
+                <div class="stat-card-value">{{ stats.practice_minutes }} <span class="stat-unit">mins</span></div>
+                <p class="stat-card-footer">Total conversation duration recorded</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Placement Score</span>
+                    <span class="stat-badge blue">{{ stats.interview_count }} completed</span>
+                </div>
+                <div class="stat-card-value">{{ stats.avg_interview_score }} <span class="stat-unit">/ 10</span></div>
+                <p class="stat-card-footer">Average STAR response evaluation</p>
+            </div>
+        </div>
+
+        <!-- SKILL MASTERY BREAKDOWN -->
+        <section class="panel-card" style="margin-top: 24px;">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Competency Breakdown</h2>
+                    <p class="panel-subtitle">Performance breakdown across the 4 core pillars of English communication</p>
+                </div>
+                <span class="panel-tag">Evaluated by Sophia AI</span>
+            </div>
+
+            <div class="competency-grid">
+                <!-- Competency 1: Speaking -->
+                <div class="competency-card">
+                    <div class="competency-top">
+                        <span class="competency-name">🎙️ Spoken Fluency & Flow</span>
+                        <span class="competency-pct">{{ stats.fluency_score }}%</span>
+                    </div>
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: {{ stats.fluency_score }}%;"></div>
+                    </div>
+                    <p class="competency-desc">Consistent response pacing and natural connector usage during AI dialogue turns.</p>
+                </div>
+
+                <!-- Competency 2: Grammar -->
+                <div class="competency-card">
+                    <div class="competency-top">
+                        <span class="competency-name">✍️ Grammatical Precision</span>
+                        <span class="competency-pct">88%</span>
+                    </div>
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 88%;"></div>
+                    </div>
+                    <p class="competency-desc">Minimization of stative verb errors, preposition slip-ups, and tense mismatches.</p>
+                </div>
+
+                <!-- Competency 3: Vocabulary -->
+                <div class="competency-card">
+                    <div class="competency-top">
+                        <span class="competency-name">📖 Lexicon & Academic Terms</span>
+                        <span class="competency-pct">{{ stats.vocab_pct }}%</span>
+                    </div>
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: {{ stats.vocab_pct }}%;"></div>
+                    </div>
+                    <p class="competency-desc">{{ stats.vocab_count }} saved words actively reinforced in daily speaking routines.</p>
+                </div>
+
+                <!-- Competency 4: Interview -->
+                <div class="competency-card">
+                    <div class="competency-top">
+                        <span class="competency-name">💼 Placement Interview Readiness</span>
+                        <span class="competency-pct">{{ stats.interview_pct }}%</span>
+                    </div>
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: {{ stats.interview_pct }}%;"></div>
+                    </div>
+                    <p class="competency-desc">Structured STAR response framing and reduction of conversational fillers.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECENT PRACTICE LOGS -->
+        <div class="panel-card" style="margin-top: 24px;">
+            <div class="panel-header">
+                <h2 class="panel-title">Session Log History (Database)</h2>
+                <a href="{{ url_for('practice') }}" class="section-link">Start New Turn &rarr;</a>
+            </div>
+
+            <div class="activity-list">
+                {% if stats.recent_activities %}
+                    {% for act in stats.recent_activities %}
+                    <div class="activity-item">
+                        <div class="activity-left">
+                            <span class="activity-dot {% if act.type == 'interview' %}success{% else %}purple{% endif %}"></span>
+                            <div>
+                                <div class="activity-title">
+                                    {% if act.type == 'interview' %}
+                                    Mock Interview: {{ act.title }}
+                                    {% else %}
+                                    Conversation: {{ act.title|replace('-', ' ')|title }}
+                                    {% endif %}
+                                </div>
+                                <div class="activity-time">{{ act.created_at }} • {{ act.subtitle }}</div>
+                            </div>
+                        </div>
+                        <span class="activity-score">
+                            {% if act.score %}
+                            Score: {{ act.score }} / 10
+                            {% else %}
+                            Completed
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="padding: 24px; text-align: center; color: var(--text-muted);">
+                        No sessions logged yet.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="module-page-container">
+    <header class="page-header-banner">
+        <div class="header-banner-badge">
+            <span>📚 CURATED CURRICULUM</span>
+        </div>
+        <h1 class="page-title">Learning Modules & Pathways</h1>
+        <p class="page-subtitle">
+            Structured, interactive modules designed to transition you from hesitant speaker to articulate professional communicator.
+        </p>
+    </header>
+
+    <div class="module-content-container">
+        <!-- MODULE PATHWAYS GRID -->
+        <div class="pathway-grid">
+            <!-- Module 1: Foundational English -->
+            <div class="pathway-card">
+                <div class="pathway-card-top">
+                    <span class="pathway-icon">☕</span>
+                    <span class="pathway-level-badge beginner">Beginner • A1-A2</span>
+                </div>
+                <h2 class="pathway-title">Everyday Situations & Social Ease</h2>
+                <p class="pathway-desc">
+                    Master essential day-to-day interactions including ordering at cafes, asking for campus directions, and polite social exchanges.
+                </p>
+                <div class="pathway-topics-list">
+                    <span class="topic-pill">Cafe Ordering</span>
+                    <span class="topic-pill">Polite Requests</span>
+                    <span class="topic-pill">Daily Routines</span>
+                </div>
+                <div class="pathway-progress-row">
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 85%;"></div>
+                    </div>
+                    <span class="pathway-progress-text">85% Complete</span>
+                </div>
+                <a href="{{ url_for('practice') }}?topic=ordering-cafe" class="btn-primary w-full text-center">
+                    <span>Practice Cafe Conversation</span> &rarr;
+                </a>
+            </div>
+
+            <!-- Module 2: Conversational Fluency -->
+            <div class="pathway-card highlighted">
+                <div class="pathway-card-top">
+                    <span class="pathway-icon">🎓</span>
+                    <span class="pathway-level-badge intermediate">Intermediate • B1-B2</span>
+                </div>
+                <h2 class="pathway-title">Campus & College Life</h2>
+                <p class="pathway-desc">
+                    Participate actively in seminar debates, explain group project responsibilities, and converse effortlessly with college peers.
+                </p>
+                <div class="pathway-topics-list">
+                    <span class="topic-pill">Group Projects</span>
+                    <span class="topic-pill">Expressing Opinions</span>
+                    <span class="topic-pill">Academic Debates</span>
+                </div>
+                <div class="pathway-progress-row">
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 65%;"></div>
+                    </div>
+                    <span class="pathway-progress-text">65% Complete</span>
+                </div>
+                <a href="{{ url_for('practice') }}?topic=college-life" class="btn-primary w-full text-center">
+                    <span>Continue Campus Dialogue</span> &rarr;
+                </a>
+            </div>
+
+            <!-- Module 3: Placement & Interview Prep -->
+            <div class="pathway-card">
+                <div class="pathway-card-top">
+                    <span class="pathway-icon">💼</span>
+                    <span class="pathway-level-badge advanced">Career • B2-C1</span>
+                </div>
+                <h2 class="pathway-title">Campus Placements & HR Interviews</h2>
+                <p class="pathway-desc">
+                    Overcome interview stage-fright. Practice high-frequency placement questions with the STAR method and filler-word detection.
+                </p>
+                <div class="pathway-topics-list">
+                    <span class="topic-pill">Self Introduction</span>
+                    <span class="topic-pill">STAR Technique</span>
+                    <span class="topic-pill">Handling Difficult Questions</span>
+                </div>
+                <div class="pathway-progress-row">
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 50%;"></div>
+                    </div>
+                    <span class="pathway-progress-text">50% Complete</span>
+                </div>
+                <a href="{{ url_for('interview') }}" class="btn-primary w-full text-center">
+                    <span>Start Mock Interview</span> &rarr;
+                </a>
+            </div>
+
+            <!-- Module 5: Vocabulary Studio -->
+            <div class="pathway-card">
+                <div class="pathway-card-top">
+                    <span class="pathway-icon">📖</span>
+                    <span class="pathway-level-badge vocab">Lexicon • Intermediate+</span>
+                </div>
+                <h2 class="pathway-title">Vocabulary & Academic Idioms</h2>
+                <p class="pathway-desc">
+                    Expand your spoken lexicon with daily spotlight words, collocations, phrasal verbs, and unlimited dictionary lookup with audio.
+                </p>
+                <div class="pathway-topics-list">
+                    <span class="topic-pill">Word of the Day</span>
+                    <span class="topic-pill">Unlimited Search</span>
+                    <span class="topic-pill">Audio Pronunciation</span>
+                </div>
+                <div class="pathway-progress-row">
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 80%;"></div>
+                    </div>
+                    <span class="pathway-progress-text">80% Complete</span>
+                </div>
+                <a href="{{ url_for('vocabulary') }}" class="btn-primary w-full text-center">
+                    <span>Explore Vocabulary Studio</span> &rarr;
+                </a>
+            </div>
+
+            <!-- Module 6: Listening Studio -->
+            <div class="pathway-card">
+                <div class="pathway-card-top">
+                    <span class="pathway-icon">🎧</span>
+                    <span class="pathway-level-badge listening">Aural • All Levels</span>
+                </div>
+                <h2 class="pathway-title">Listening Comprehension & Accents</h2>
+                <p class="pathway-desc">
+                    Train your ears to understand rapid spoken English, connected speech, and diverse international accents with instant quizzes.
+                </p>
+                <div class="pathway-topics-list">
+                    <span class="topic-pill">Rapid Speech</span>
+                    <span class="topic-pill">Accent Tuning</span>
+                    <span class="topic-pill">Audio Quizzes</span>
+                </div>
+                <div class="pathway-progress-row">
+                    <div class="custom-progress-bar">
+                        <div class="progress-bar-fill" style="width: 40%;"></div>
+                    </div>
+                    <span class="pathway-progress-text">40% Complete</span>
+                </div>
+                <a href="{{ url_for('listening') }}" class="btn-primary w-full text-center">
+                    <span>Start Listening Studio</span> &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

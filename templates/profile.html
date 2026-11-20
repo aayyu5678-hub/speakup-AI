@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="module-page-container">
+    <header class="page-header-banner">
+        <div class="header-banner-badge">
+            <span>👤 ACCOUNT MANAGEMENT</span>
+        </div>
+        <h1 class="page-title">Profile & Student Account Settings</h1>
+        <p class="page-subtitle">
+            Manage your personal learning credentials, update your password, customize your learning avatar, and view your active database session.
+        </p>
+    </header>
+
+    <div class="module-content-container" style="max-width: 860px; margin: 0 auto;">
+        <!-- PROFILE HERO CARD -->
+        <div class="panel-card" style="margin-bottom: 24px; padding: 28px;">
+            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                <div class="profile-modal-avatar-large" style="width: 72px; height: 72px; font-size: 2rem;">
+                    {% if user and user.avatar %}
+                        {{ user.avatar }}
+                    {% elif user %}
+                        {{ user.name[:2]|upper }}
+                    {% else %}
+                        AT
+                    {% endif %}
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-dark);">{{ user.name if user else 'Alex Turner' }}</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 2px;">{{ user.email if user else 'alex.turner@college.edu' }}</p>
+                    <span class="badge-role" style="display: inline-block; margin-top: 6px;">Student Member • Authenticated</span>
+                </div>
+                <div>
+                    <a href="{{ url_for('logout') }}" class="btn-secondary" style="color: #DC2626; border-color: #FCA5A5;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        <span>Sign Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px;">
+            <!-- EDIT PROFILE DETAILS -->
+            <div class="panel-card" style="padding: 24px;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 16px;">Edit Profile Information</h3>
+                <form onsubmit="handleProfilePageSubmit(event)">
+                    <div class="form-group">
+                        <label for="pageProfileName">Full Name</label>
+                        <input type="text" id="pageProfileName" required value="{{ user.name if user else 'Alex Turner' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="pageProfileEmail">Student Email Address</label>
+                        <input type="email" id="pageProfileEmail" required value="{{ user.email if user else 'alex.turner@college.edu' }}">
+                    </div>
+                    <button type="submit" class="btn-primary w-full" id="pageSaveProfileBtn" style="margin-top: 14px;">Save Profile Changes</button>
+                </form>
+            </div>
+
+            <!-- CHANGE PASSWORD -->
+            <div class="panel-card" style="padding: 24px;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 16px;">Update Password</h3>
+                <form onsubmit="handlePasswordPageSubmit(event)">
+                    <div class="form-group">
+                        <label for="pageCurrentPassword">Current Password</label>
+                        <input type="password" id="pageCurrentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                        <label for="pageNewPassword">New Password (min 4 characters)</label>
+                        <input type="password" id="pageNewPassword" required placeholder="Enter new password">
+                    </div>
+                    <div class="form-group">
+                        <label for="pageConfirmPassword">Confirm New Password</label>
+                        <input type="password" id="pageConfirmPassword" required placeholder="Confirm new password">
+                    </div>
+                    <button type="submit" class="btn-primary w-full" id="pageSavePasswordBtn" style="margin-top: 14px;">Update Password</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- AVATAR SELECTION -->
+        <div class="panel-card" style="margin-top: 24px; padding: 24px;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 12px;">Choose Learning Avatar</h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">Select an avatar icon to represent you across the Speaking Room, Leaderboard, and Student Dashboard.</p>
+            <div class="avatar-presets-grid">
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('👨‍🎓')">👨‍🎓</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('👩‍🎓')">👩‍🎓</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('🧑‍💻')">🧑‍💻</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('👩‍💻')">👩‍💻</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('💡')">💡</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('🚀')">🚀</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('🦊')">🦊</button>
+                <button type="button" class="avatar-preset-card" onclick="selectPresetAvatar('⚡')">⚡</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function handleProfilePageSubmit(event) {
+    event.preventDefault();
+    const name = document.getElementById('pageProfileName').value.trim();
+    const email = document.getElementById('pageProfileEmail').value.trim();
+    const btn = document.getElementById('pageSaveProfileBtn');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+    }
+
+    try {
+        const res = await fetch('/api/user/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Profile updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 700);
+        } else {
+            showToast(data.error || 'Failed to update profile.', 'error');
+        }
+    } catch (err) {
+        showToast('Connection error. Please try again.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Save Profile Changes';
+        }
+    }
+}
+
+async function handlePasswordPageSubmit(event) {
+    event.preventDefault();
+    const current_password = document.getElementById('pageCurrentPassword').value;
+    const new_password = document.getElementById('pageNewPassword').value;
+    const confirm_password = document.getElementById('pageConfirmPassword').value;
+    const btn = document.getElementById('pageSavePasswordBtn');
+
+    if (new_password !== confirm_password) {
+        showToast('New passwords do not match.', 'error');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+    }
+
+    try {
+        const res = await fetch('/api/user/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password, new_password, confirm_password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Password changed successfully!', 'success');
+            document.getElementById('pageCurrentPassword').value = '';
+            document.getElementById('pageNewPassword').value = '';
+            document.getElementById('pageConfirmPassword').value = '';
+        } else {
+            showToast(data.error || 'Failed to change password.', 'error');
+        }
+    } catch (err) {
+        showToast('Connection error. Please try again.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Update Password';
+        }
+    }
+}
+</script>
+{% endblock %}

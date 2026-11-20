@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modules.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="module-page-container">
+    <header class="page-header-banner">
+        <div class="header-banner-badge">
+            <span>🎧 LISTENING PRACTICE STUDIO</span>
+        </div>
+        <h1 class="page-title">Active Listening & Comprehension</h1>
+        <p class="page-subtitle">
+            Train your ears to understand natural connected speech, international pronunciations, academic consultations, and professional workplace English.
+        </p>
+
+        <!-- CATEGORY FILTER BUTTONS -->
+        <div class="listening-category-filters" role="tablist" aria-label="Dialogue Categories">
+            <a href="{{ url_for('listening') }}?category=all" class="filter-pill-btn {% if not selected_category or selected_category == 'all' %}active{% endif %}">
+                All Scenarios ({{ all_dialogues|length }})
+            </a>
+            <a href="{{ url_for('listening') }}?category=formal" class="filter-pill-btn {% if selected_category == 'formal' %}active{% endif %}">
+                🏛️ Formal Conversations
+            </a>
+            <a href="{{ url_for('listening') }}?category=informal" class="filter-pill-btn {% if selected_category == 'informal' %}active{% endif %}">
+                ☕ Informal Conversations
+            </a>
+            <a href="{{ url_for('listening') }}?category=professional" class="filter-pill-btn {% if selected_category == 'professional' %}active{% endif %}">
+                💼 Professional Conversations
+            </a>
+            <a href="{{ url_for('listening') }}?category=friendly" class="filter-pill-btn {% if selected_category == 'friendly' %}active{% endif %}">
+                🤝 Friendly Conversations
+            </a>
+        </div>
+    </header>
+
+    <div class="module-content-container">
+        <!-- DIALOGUES GRID -->
+        <div class="listening-grid">
+            {% for item in dialogues %}
+            <div class="listening-card" id="listenExercise{{ item.id }}">
+                <div class="listening-card-header">
+                    <div>
+                        <div class="listening-badge-row">
+                            <span class="listening-badge {{ item.category_slug }}">
+                                {% if item.category == 'Formal' %}🏛️ Formal
+                                {% elif item.category == 'Informal' %}☕ Informal
+                                {% elif item.category == 'Professional' %}💼 Professional
+                                {% else %}🤝 Friendly{% endif %}
+                            </span>
+                            <span class="listening-difficulty-badge {{ item.difficulty|lower }}">
+                                {{ item.difficulty }}
+                            </span>
+                        </div>
+                        <h2 class="listening-title">{{ item.title }}</h2>
+                    </div>
+                    <span class="listening-duration">⏱️ {{ item.duration }}</span>
+                </div>
+
+                <p class="listening-context">
+                    <strong>Situation:</strong> {{ item.situation }}
+                </p>
+
+                <!-- Audio Player Bar -->
+                <div class="listening-player-box">
+                    <button type="button" class="btn-play-audio" id="playBtn{{ item.id }}" onclick="toggleAudioPlayback({{ item.id }})">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <span id="playBtnText{{ item.id }}">Play Audio</span>
+                    </button>
+                    <div class="speed-toggle-wrap">
+                        <span class="speed-label">Speed:</span>
+                        <button type="button" class="btn-speed active" id="speed{{ item.id }}_1" onclick="setListeningSpeed({{ item.id }}, 1.0)">1.0x</button>
+                        <button type="button" class="btn-speed" id="speed{{ item.id }}_08" onclick="setListeningSpeed({{ item.id }}, 0.8)">0.8x</button>
+                    </div>
+                </div>
+
+                <!-- Questions Form -->
+                <form class="listening-quiz-form" onsubmit="checkDialogueQuiz(event, {{ item.id }})">
+                    {% for q in item.questions %}
+                    <div class="quiz-question-box">
+                        <p class="quiz-q-title"><strong>Question {{ loop.index }}:</strong> {{ q.question }}</p>
+                        <div class="quiz-options">
+                            {% for opt in q.options %}
+                            <label class="quiz-opt-label">
+                                <input type="radio" name="q_{{ item.id }}_{{ q.q_id }}" value="{{ opt.val }}" required>
+                                <span>{{ opt.text }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="quiz-submit-row">
+                        <button type="submit" class="btn-primary" id="submitBtn{{ item.id }}">Check Answers</button>
+                        <button type="button" class="btn-secondary" onclick="toggleTranscript({{ item.id }})">Toggle Transcript</button>
+                    </div>
+
+                    <div id="quizFeedback{{ item.id }}" class="quiz-feedback-box" style="display: none;"></div>
+                </form>
+
+                <!-- Transcript Accordion -->
+                <div id="transcript{{ item.id }}" class="transcript-box" style="display: none;">
+                    <h4>Conversation Transcript:</h4>
+                    <div class="transcript-lines-list">
+                        {% for line in item.dialogue %}
+                        <div class="transcript-turn">
+                            <span class="speaker-label">{{ line.speaker }}:</span>
+                            <span class="speaker-text">"{{ line.text }}"</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dialogue Audio Data and Quiz Answer Keys
+const dialogueData = {
+    {% for item in all_dialogues %}
+    {{ item.id }}: {
+        audioText: {{ item.audio_text|tojson }},
+        questions: {
+            {% for q in item.questions %}
+            {{ q.q_id }}: {
+                correct: {{ q.correct|tojson }},
+                explanation: {{ q.explanation|tojson }}
+            },
+            {% endfor %}
+        }
+    },
+    {% endfor %}
+};
+
+const dialogueSpeeds = {};
+let currentPlayingId = null;
+
+function setListeningSpeed(id, rate) {
+    dialogueSpeeds[id] = rate;
+    const s1 = document.getElementById(`speed${id}_1`);
+    const s08 = document.getElementById(`speed${id}_08`);
+    if (s1 && s08) {
+        s1.classList.toggle('active', rate === 1.0);
+        s08.classList.toggle('active', rate === 0.8);
+    }
+    showToast(`Playback speed set to ${rate}x`);
+}
+
+function toggleAudioPlayback(id) {
+    if (!('speechSynthesis' in window)) {
+        showToast('Audio speech is not supported in this browser.', 'warning');
+        return;
+    }
+
+    if (currentPlayingId === id && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        resetPlayBtn(id);
+        currentPlayingId = null;
+        showToast('Audio paused.');
+        return;
+    }
+
+    // Stop any existing speech
+    window.speechSynthesis.cancel();
+    if (currentPlayingId && currentPlayingId !== id) {
+        resetPlayBtn(currentPlayingId);
+    }
+
+    const item = dialogueData[id];
+    if (!item) return;
+
+    const utterance = new SpeechSynthesisUtterance(item.audioText);
+    utterance.lang = 'en-US';
+    utterance.rate = dialogueSpeeds[id] || 1.0;
+    utterance.pitch = 1.0;
+
+    const btnText = document.getElementById(`playBtnText${id}`);
+    if (btnText) btnText.textContent = 'Stop Audio ⏹️';
+    currentPlayingId = id;
+
+    utterance.onend = () => {
+        resetPlayBtn(id);
+        currentPlayingId = null;
+    };
+
+    utterance.onerror = () => {
+        resetPlayBtn(id);
+        currentPlayingId = null;
+    };
+
+    window.speechSynthesis.speak(utterance);
+    showToast(`Playing dialogue #${id} (${utterance.rate}x speed)...`);
+}
+
+function resetPlayBtn(id) {
+    const btnText = document.getElementById(`playBtnText${id}`);
+    if (btnText) btnText.textContent = 'Play Audio';
+}
+
+function toggleTranscript(id) {
+    const el = document.getElementById(`transcript${id}`);
+    if (el) {
+        el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+    }
+}
+
+function checkDialogueQuiz(event, id) {
+    event.preventDefault();
+    const fb = document.getElementById(`quizFeedback${id}`);
+    const item = dialogueData[id];
+    if (!fb || !item) return;
+
+    let score = 0;
+    let total = 0;
+    let explanationsHtml = '';
+
+    for (const [qId, qData] of Object.entries(item.questions)) {
+        total++;
+        const selected = document.querySelector(`input[name="q_${id}_${qId}"]:checked`);
+        if (!selected) {
+            showToast('Please answer all questions before submitting.', 'warning');
+            return;
+        }
+
+        const isCorrect = (selected.value === qData.correct);
+        if (isCorrect) score++;
+
+        explanationsHtml += `
+            <div style="margin-top: 8px; font-size: 0.85rem;">
+                <strong>Question ${qId}:</strong> ${isCorrect ? '✅ <span style="color: #065F46; font-weight: 700;">Correct</span>' : '❌ <span style="color: #B91C1C; font-weight: 700;">Incorrect</span>'}.
+                <div style="color: #374151; margin-top: 2px;"><em>Explanation:</em> ${qData.explanation}</div>
+            </div>
+        `;
+    }
+
+    fb.style.display = 'block';
+    if (score === total) {
+        fb.className = 'quiz-feedback-box success';
+        fb.innerHTML = `
+            <div>
+                🎉 <strong>Perfect Score! ${score}/${total} Correct.</strong>
+                ${explanationsHtml}
+            </div>
+        `;
+        showToast(`Dialogue #${id}: 100% correct! Great listening.`, 'success');
+    } else {
+        fb.className = 'quiz-feedback-box warning';
+        fb.innerHTML = `
+            <div>
+                🎧 <strong>Score: ${score}/${total} Correct.</strong>
+                ${explanationsHtml}
+                <div style="margin-top: 8px; font-size: 0.82rem; color: #92400E;">
+                    Tip: Replay the audio at 0.8x slow speed or toggle the transcript above to review missed details.
+                </div>
+            </div>
+        `;
+        showToast(`Dialogue #${id}: ${score}/${total} correct. Review explanations below.`, 'info');
+    }
+}
+</script>
+{% endblock %}
